@@ -1,8 +1,8 @@
-# n8n-nodes-_node-name_
+# n8n-nodes-pulsar-trigger
 
-This is an n8n community node. It lets you use _app/service name_ in your n8n workflows.
+This is an n8n community node. It lets you use Apache Pulsar in your n8n workflows.
 
-_App/service name_ is _one or two sentences describing the service this node integrates with_.
+Apache Pulsar is an open-source distributed pub-sub messaging and streaming platform built for cloud-native environments.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
@@ -20,29 +20,34 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 
 ## Operations
 
-_List the operations supported by your node._
+- **Consume Messages**: Subscribes to a Pulsar topic and triggers a workflow when new messages are received.
 
 ## Credentials
 
-_If users need to authenticate with the app/service, provide details here. You should include prerequisites (such as signing up with the service), available authentication methods, and how to set them up._
+You will need the following information to authenticate with Apache Pulsar:
+- **Pulsar Service URL**: The URL of your Pulsar service (e.g., `pulsar://localhost:6650`)
+- **Authentication Type**: Currently supports:
+  - No authentication
+  - Token-based authentication
+  - OAuth2 authentication
 
 ## Compatibility
 
-_State the minimum n8n version, as well as which versions you test against. You can also include any known version incompatibility issues._
+This node has been tested with n8n version 1.0+ and Apache Pulsar 2.10+.
 
 ## Usage
 
-_This is an optional section. Use it to help users with any difficult or confusing aspects of the node._
-
-_By the time users are looking for community nodes, they probably already know n8n basics. But if you expect new users, you can link to the [Try it out](https://docs.n8n.io/try-it-out/) documentation to help them get started._
+1. Create a new workflow
+2. Add a Pulsar Trigger node
+3. Configure the connection credentials
+4. Specify the topic to subscribe to
+5. Configure subscription options (subscription name, subscription type)
+6. Deploy the workflow and the node will start consuming messages
 
 ## Resources
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
-* _Link to app/service documentation._
+* [Apache Pulsar documentation](https://pulsar.apache.org/docs/)
 
-## Version history
-
-_This is another optional section. If your node has multiple versions, include a short description of available versions and what changed, as well as any compatibility impact._
 
 

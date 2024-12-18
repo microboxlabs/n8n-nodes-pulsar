@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-nodes-pulsar",
   "version": "0.1.0",
   "description": "",
   "keywords": [
@@ -13,13 +13,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<...>/n8n-nodes-<...>.git"
+    "url": "https://github.com/microboxlabs/n8n-nodes-pulsar.git"
   },
   "engines": {
     "node": ">=18.10",
     "pnpm": ">=9.1"
   },
-  "packageManager": "pnpm@9.1.4",
+  "packageManager": "pnpm@9.15.0+sha512.76e2379760a4328ec4415815bcd6628dee727af3779aaa4c914e3944156c4299921a89f976381ee107d41f12cfa4b66681ca9c718f0668fa0831ed4c6d8ba56c",
   "main": "index.js",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
@@ -36,12 +36,10 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js",
-      "dist/credentials/HttpBinApi.credentials.js"
+      "dist/credentials/PulsarApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js",
-      "dist/nodes/HttpBin/HttpBin.node.js"
+      "dist/nodes/Pulsar/PulsarTrigger.node.js"
     ]
   },
   "devDependencies": {
@@ -55,5 +53,9 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
+  },
+  "dependencies": {
+    "Pulsar": "link:/Users/korutx/Documents/microboxlabs/projects/streamhub/n8n-nodes-pulsar/nodes/Pulsar",
+    "pulsar-client": "^1.12.0"
   }
 }
