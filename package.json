@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-pulsar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "n8n node for Apache Pulsar integration, enabling message publishing and consumption through n8n workflows",
   "keywords": [
     "n8n-community-node-package"
@@ -55,7 +55,6 @@
     "n8n-workflow": "*"
   },
   "dependencies": {
-    "Pulsar": "link:/Users/korutx/Documents/microboxlabs/projects/streamhub/n8n-nodes-pulsar/nodes/Pulsar",
     "pulsar-client": "^1.12.0"
   }
 }

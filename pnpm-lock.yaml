@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      Pulsar:
-        specifier: link:/Users/korutx/Documents/microboxlabs/projects/streamhub/n8n-nodes-pulsar/nodes/Pulsar
-        version: link:nodes/Pulsar
       pulsar-client:
         specifier: ^1.12.0
         version: 1.12.0
