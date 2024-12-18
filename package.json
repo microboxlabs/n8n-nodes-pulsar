@@ -1,15 +1,15 @@
 {
   "name": "n8n-nodes-pulsar",
   "version": "0.1.0",
-  "description": "",
+  "description": "n8n node for Apache Pulsar integration, enabling message publishing and consumption through n8n workflows",
   "keywords": [
     "n8n-community-node-package"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/microboxlabs/n8n-nodes-pulsar",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Michel David",
+    "email": "michel@microboxlabs.com"
   },
   "repository": {
     "type": "git",
