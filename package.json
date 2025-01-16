@@ -39,7 +39,8 @@
       "dist/credentials/PulsarApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/Pulsar/PulsarTrigger.node.js"
+      "dist/nodes/Pulsar/PulsarTrigger.node.js",
+      "dist/nodes/Pulsar/PulsarPublish.node.js"
     ]
   },
   "devDependencies": {
@@ -47,9 +48,11 @@
     "eslint": "^8.56.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.1",
     "gulp": "^4.0.2",
+    "n8n-core": "*",
     "n8n-workflow": "*",
     "prettier": "^3.3.2",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "@types/node": "^20.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"
