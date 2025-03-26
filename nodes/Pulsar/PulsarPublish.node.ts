@@ -1,23 +1,42 @@
 import {
+    IconFile,
     IExecuteFunctions,
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
     NodeOperationError,
+    Themed,
 } from "n8n-workflow";
 import { Client, ProducerConfig } from "pulsar-client";
 
+
 export class PulsarPublish implements INodeType {
+
+    // icon = {
+    //     light: 'file:pulsar-light.svg',
+    //     dark: 'file:pulsar-dark.svg'
+    // } as Themed<IconFile>;
+
     description: INodeTypeDescription = {
         displayName: "Pulsar Publisher",
+        
         name: "pulsarPublish",
-        icon: "file:pulsar.svg",
+        
+        icon:  {
+            light: 'file:../../assets/pulsar-light.svg',
+            dark: 'file:../../assets/pulsar-dark.svg'
+        } as Themed<IconFile>,
+
         group: ["output"],
+
         version: 1,
+        
         description: "Publish messages to Apache Pulsar",
+        
         defaults: {
             name: "Pulsar Publisher",
         },
+        
         inputs: ["main"],
         outputs: ["main"],
         credentials: [
@@ -124,7 +143,7 @@ export class PulsarPublish implements INodeType {
                         description: "Key to maintain message ordering",
                     },
                     {
-                        displayName: "Delivery Delay (ms)",
+                        displayName: 'Delivery Delay (Ms)',
                         name: "deliveryTimestamp",
                         type: "number",
                         default: 0,

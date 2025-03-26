@@ -8,8 +8,8 @@ export class PulsarApi implements ICredentialType {
     documentationUrl = 'https://pulsar.apache.org/';
 
     icon = {
-        light: 'file:pulsar-light.svg',
-        dark: 'file:pulsar-dark.svg'
+        light: 'file:../../assets/pulsar-light.svg',
+        dark: 'file:../../assets/pulsar-dark.svg'
     } as Themed<IconFile>;
         
     properties: INodeProperties[] = [

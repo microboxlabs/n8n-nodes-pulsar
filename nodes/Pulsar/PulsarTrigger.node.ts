@@ -5,7 +5,10 @@ export class PulsarTrigger implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'Pulsar Trigger',
         name: 'pulsarTrigger',
-        icon: { light: 'file:pulsar-light.svg', dark: 'file:pulsar-dark.svg' },
+        icon: { 
+            light: 'file:../../assets/pulsar-light.svg', 
+            dark: 'file:../../assets/pulsar-dark.svg' 
+        },
         group: ['trigger'],
         version: 1,
         description: 'Consume messages from a Pulsar topic',
