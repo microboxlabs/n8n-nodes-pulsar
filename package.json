@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-pulsar",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "n8n node for Apache Pulsar integration, enabling message publishing and consumption through n8n workflows",
   "keywords": [
     "n8n-community-node-package"
