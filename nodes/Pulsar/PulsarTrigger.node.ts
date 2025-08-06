@@ -185,6 +185,16 @@ export class PulsarTrigger implements INodeType {
         const ackTimeoutMs = this.getNodeParameter('ackTimeoutMs') as number;
         const options = this.getNodeParameter('options') as IDataObject;
 
+        const config: ConsumerConfig = {
+            subscription: subscription,
+            topic: topic,
+            subscriptionType: subscriptionType,
+            receiverQueueSize: receiverQueueSize,
+            ackTimeoutMs: ackTimeoutMs,
+            ...options
+        };
+
+
         const credentials = await this.getCredentials('pulsarApi');
 
         // OIDC authentication support
