@@ -21,6 +21,37 @@ export class PulsarTrigger implements INodeType {
             {
                 name: 'pulsarApi',
                 required: false
+            },
+            // Add OIDC fields
+            {
+                name: 'issuerUrl',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
+            },
+            {
+                name: 'clientId',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
+            },
+            {
+                name: 'clientSecret',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
+            },
+            {
+                name: 'audience',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
+            },
+            {
+                name: 'scope',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
+            },
+            {
+                name: 'privateKey',
+                required: false,
+                displayOptions: { show: { authentication: ['oidc'] } }
             }
         ],
         properties: [
@@ -156,16 +187,38 @@ export class PulsarTrigger implements INodeType {
 
         const credentials = await this.getCredentials('pulsarApi');
 
-        const config: ConsumerConfig = {
-            subscription: subscription,
-            topic: topic,
-            subscriptionType: subscriptionType,
-            receiverQueueSize: receiverQueueSize,
-            ackTimeoutMs: ackTimeoutMs,
-            ...options
-        };
+        // OIDC authentication support
+        let authentication;
+        if (
+            credentials.issuerUrl &&
+            credentials.clientId &&
+            credentials.clientSecret
+        ) {
+            // Dynamically import AuthenticationOauth2
+            // @ts-ignore
+            const Pulsar = require('pulsar-client');
+            const params: Record<string, string> = {
+                issuer_url: credentials.issuerUrl as string,
+                client_id: credentials.clientId as string,
+                client_secret: credentials.clientSecret as string,
+            };
+            if (credentials.privateKey) {
+                params.private_key = credentials.privateKey as string;
+                delete params.client_secret;
+            }
+            if (credentials.audience) {
+                params.audience = credentials.audience as string;
+            }
+            if (credentials.scope) {
+                params.scope = credentials.scope as string;
+            }
+            authentication = new Pulsar.AuthenticationOauth2(params);
+        }
 
-        const client = new Client({ serviceUrl: credentials.serviceUrl as string });
+        const client = new Client({
+            serviceUrl: credentials.serviceUrl as string,
+            ...(authentication ? { authentication } : {}),
+        });
         let consumer: Consumer;
         const startConsumer = async () => {
             if (consumer) {
