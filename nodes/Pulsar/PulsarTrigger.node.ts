@@ -292,7 +292,6 @@ export class PulsarTrigger implements INodeType {
                         data.topic = msg.getTopicName();
                         data.messageId = msg.getMessageId();
                         data.eventTimestamp = new Date(msg.getEventTimestamp());
-                        data.redeliveryCount = msg.getRedeliveryCount();
                         data.publishTimestamp = new Date(msg.getPublishTimestamp());
                         data.redeliveryCount = msg.getRedeliveryCount();
 
