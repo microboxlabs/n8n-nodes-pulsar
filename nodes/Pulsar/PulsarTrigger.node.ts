@@ -1,13 +1,13 @@
 import { IDataObject, INodeType, INodeTypeDescription, ITriggerFunctions, ITriggerResponse } from 'n8n-workflow';
-import { Client, Consumer, ConsumerConfig, SubscriptionType } from 'pulsar-client';
+import Pulsar, { Client, Consumer, ConsumerConfig, SubscriptionType } from 'pulsar-client';
 
 export class PulsarTrigger implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'Pulsar Trigger',
         name: 'pulsarTrigger',
-        icon: { 
-            light: 'file:../../assets/pulsar-light.svg', 
-            dark: 'file:../../assets/pulsar-dark.svg' 
+        icon: {
+            light: 'file:../../assets/pulsar-light.svg',
+            dark: 'file:../../assets/pulsar-dark.svg'
         },
         group: ['trigger'],
         version: 1,
@@ -20,7 +20,7 @@ export class PulsarTrigger implements INodeType {
         credentials: [
             {
                 name: 'pulsarApi',
-                required: false
+                required: true
             }
         ],
         properties: [
@@ -144,7 +144,7 @@ export class PulsarTrigger implements INodeType {
             },
         ],
     };
-    
+
     async trigger(this: ITriggerFunctions): Promise<ITriggerResponse | undefined> {
 
         const subscription = this.getNodeParameter('subscriptionName') as string;
@@ -153,8 +153,6 @@ export class PulsarTrigger implements INodeType {
         const receiverQueueSize = this.getNodeParameter('receiverQueueSize') as number;
         const ackTimeoutMs = this.getNodeParameter('ackTimeoutMs') as number;
         const options = this.getNodeParameter('options') as IDataObject;
-
-        const credentials = await this.getCredentials('pulsarApi');
 
         const config: ConsumerConfig = {
             subscription: subscription,
@@ -165,34 +163,127 @@ export class PulsarTrigger implements INodeType {
             ...options
         };
 
-        const client = new Client({ serviceUrl: credentials.serviceUrl as string });
+
+        const credentials = await this.getCredentials('pulsarApi');
+
+        // Authentication support
+        let authentication;
+
+
+        if (credentials.authentication === 'oauth2' &&
+            credentials.issuerUrl &&
+            credentials.clientId &&
+            credentials.clientSecret
+        ) {
+
+            // OIDC/OAuth2 Client Credentials Flow
+            const params: { type: string; issuer_url: string; client_id?: string | undefined; client_secret?: string | undefined; private_key?: string | undefined; audience?: string | undefined; scope?: string | undefined; } = {
+                type: 'client_credentials',
+                issuer_url: credentials.issuerUrl as string,
+                client_id: credentials.clientId as string,
+                client_secret: credentials.clientSecret as string,
+            };
+            if (credentials.privateKey) {
+                                params.private_key = credentials.privateKey as string;
+                delete params.client_secret;
+            }
+            if (credentials.audience) {
+                params.audience = credentials.audience as string;
+            }
+            if (credentials.scope) {
+                params.scope = credentials.scope as string;
+            }
+
+            try {
+                                authentication = new Pulsar.AuthenticationOauth2(params);
+                            } catch (error) {
+                console.error('[PulsarTrigger] Error creating OAuth2 authentication:', error);
+                throw error;
+            }
+        } else if (credentials.authentication === 'token' && credentials.token) {
+                        // Token authentication
+            try {
+                authentication = new Pulsar.AuthenticationToken({
+                    token: credentials.token as string
+                });
+                            } catch (error) {
+                console.error('[PulsarTrigger] Error creating Token authentication:', error);
+                throw error;
+            }
+        } else if (credentials.authentication === 'jwt' && credentials.jwtToken) {
+                        // JWT authentication
+            try {
+                authentication = new Pulsar.AuthenticationToken({
+                    token: credentials.jwtToken as string
+                });
+                            } catch (error) {
+                console.error('[PulsarTrigger] Error creating JWT authentication:', error);
+                throw error;
+            }
+        } else {
+            console.log('[PulsarTrigger] No authentication configured or missing required fields');
+                        if (credentials.authentication === 'oauth2') {
+                console.log('[PulsarTrigger] OAuth2 selected but missing fields:');
+                console.log('  - issuerUrl:', !!credentials.issuerUrl);
+                console.log('  - clientId:', !!credentials.clientId);
+                console.log('  - clientSecret:', !!credentials.clientSecret);
+                                                                            }
+        }
+
+        const client = new Client({
+            serviceUrl: credentials.serviceUrl as string,
+            ...(authentication ? { authentication: authentication } : {}),
+            ...(credentials.tlsAllowInsecureConnection ? { tlsAllowInsecureConnection: credentials.tlsAllowInsecureConnection as boolean } : {}),
+        });
+
+
         let consumer: Consumer;
         const startConsumer = async () => {
             if (consumer) {
-                return;
+                                return;
             }
-            consumer = await client.subscribe({...config,
-                listener: async (msg, msgConsumer ) => {
-                    
-                    let data: IDataObject = {};
-                    let value = msg.getData().toString();
-                    if (this.getNodeParameter('jsonParseMessage') as boolean) {
-                        try {
-                            value = JSON.parse(value);
-                        } catch (error) {}
-                    }
-                    data.message = value;
-                    data.headers = msg.getProperties();``
-                    data.topic = msg.getTopicName();
-                    data.messageId = msg.getMessageId();
-                    data.eventTimestamp = new Date(msg.getEventTimestamp());
-                    data.redeliveryCount = msg.getRedeliveryCount();
-                    data.publishTimestamp = new Date(msg.getPublishTimestamp());
-                    data.redeliveryCount = msg.getRedeliveryCount();
-                    await msgConsumer.acknowledge(msg);
-                    this.emit([this.helpers.returnJsonArray(data)]);
-                }
+
+            console.log('[PulsarTrigger] Creating consumer with config:', {
+                subscription: config.subscription,
+                topic: config.topic,
+                subscriptionType: config.subscriptionType,
+                receiverQueueSize: config.receiverQueueSize,
+                ackTimeoutMs: config.ackTimeoutMs
             });
+
+            try {
+                consumer = await client.subscribe({...config,
+                    listener: async (msg: any, msgConsumer: any) => {
+
+                        let data: IDataObject = {};
+                        let value = msg.getData().toString();
+                        if (this.getNodeParameter('jsonParseMessage') as boolean) {
+                            try {
+                                value = JSON.parse(value);
+                                                            } catch (error) {
+                                                            }
+                        }
+                        data.message = value;
+                        data.headers = msg.getProperties();
+                        data.topic = msg.getTopicName();
+                        data.messageId = msg.getMessageId();
+                        data.eventTimestamp = new Date(msg.getEventTimestamp());
+                        data.publishTimestamp = new Date(msg.getPublishTimestamp());
+                        data.redeliveryCount = msg.getRedeliveryCount();
+
+                        try {
+                            await msgConsumer.acknowledge(msg);
+                                                    } catch (error) {
+                            console.error('[PulsarTrigger] Error acknowledging message:', error);
+                        }
+
+                        this.emit([this.helpers.returnJsonArray(data)]);
+                                            }
+                });
+                            } catch (error) {
+                console.error('[PulsarTrigger] Error creating consumer:', error);
+                throw error;
+            }
 		};
 
         await startConsumer();
@@ -200,8 +291,14 @@ export class PulsarTrigger implements INodeType {
         // The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-            await consumer.close();
-            await client.close();
+                        try {
+                if (consumer) {
+                    await consumer.close();
+                                    }
+                await client.close();
+                            } catch (error) {
+                console.error('[PulsarTrigger] Error during cleanup:', error);
+            }
 		}
 
 		// The "manualTriggerFunction" function gets called by n8n
@@ -211,7 +308,7 @@ export class PulsarTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			await startConsumer();
+            			await startConsumer();
 		}
 
         return {

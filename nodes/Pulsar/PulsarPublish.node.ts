@@ -7,7 +7,7 @@ import {
     NodeOperationError,
     Themed,
 } from "n8n-workflow";
-import { Client, ProducerConfig } from "pulsar-client";
+import Pulsar, { Client, ProducerConfig } from "pulsar-client";
 
 
 export class PulsarPublish implements INodeType {
@@ -19,9 +19,9 @@ export class PulsarPublish implements INodeType {
 
     description: INodeTypeDescription = {
         displayName: "Pulsar Publisher",
-        
+
         name: "pulsarPublish",
-        
+
         icon:  {
             light: 'file:../../assets/pulsar-light.svg',
             dark: 'file:../../assets/pulsar-dark.svg'
@@ -30,20 +30,20 @@ export class PulsarPublish implements INodeType {
         group: ["output"],
 
         version: 1,
-        
+
         description: "Publish messages to Apache Pulsar",
-        
+
         defaults: {
             name: "Pulsar Publisher",
         },
-        
+
         inputs: ["main"],
         outputs: ["main"],
         credentials: [
             {
                 name: "pulsarApi",
                 required: true,
-            },
+            }
         ],
         properties: [
             {
@@ -160,78 +160,167 @@ export class PulsarPublish implements INodeType {
         const returnData: INodeExecutionData[] = [];
 
         const credentials = await this.getCredentials("pulsarApi");
-        const client = new Client({
+
+        // Authentication support
+        let authentication;
+
+
+        if (credentials.authentication === 'oauth2' &&
+            credentials.issuerUrl &&
+            credentials.clientId &&
+            credentials.clientSecret
+        ) {
+
+            // OIDC/OAuth2 Client Credentials Flow
+            const params: { type: string; issuer_url: string; client_id?: string | undefined; client_secret?: string | undefined; private_key?: string | undefined; audience?: string | undefined; scope?: string | undefined; } = {
+							  type: 'client_credentials',
+                issuer_url: credentials.issuerUrl as string,
+                client_id: credentials.clientId as string,
+                client_secret: credentials.clientSecret as string,
+            };
+            if (credentials.privateKey) {
+                                params.private_key = credentials.privateKey as string;
+                delete params.client_secret;
+            }
+            if (credentials.audience) {
+                params.audience = credentials.audience as string;
+            }
+            if (credentials.scope) {
+                params.scope = credentials.scope as string;
+            }
+
+            try {
+                                authentication = new Pulsar.AuthenticationOauth2(params);
+                            } catch (error) {
+                console.error('[PulsarPublish] Error creating OAuth2 authentication:', error);
+                throw error;
+            }
+        } else if (credentials.authentication === 'token' && credentials.token) {
+                        // Token authentication
+            try {
+                authentication = new Pulsar.AuthenticationToken({
+                    token: credentials.token as string
+                });
+                            } catch (error) {
+                console.error('[PulsarPublish] Error creating Token authentication:', error);
+                throw error;
+            }
+        } else if (credentials.authentication === 'jwt' && credentials.jwtToken) {
+                        // JWT authentication
+            try {
+                authentication = new Pulsar.AuthenticationToken({
+                    token: credentials.jwtToken as string
+                });
+                            } catch (error) {
+                console.error('[PulsarPublish] Error creating JWT authentication:', error);
+                throw error;
+            }
+        } else {
+            console.log('[PulsarPublish] No authentication configured or missing required fields');
+                        if (credentials.authentication === 'oauth2') {
+                console.log('[PulsarPublish] OAuth2 selected but missing fields:');
+                console.log('  - issuerUrl:', !!credentials.issuerUrl);
+                console.log('  - clientId:', !!credentials.clientId);
+                console.log('  - clientSecret:', !!credentials.clientSecret);
+                                                                            }
+        }
+
+                const client = new Client({
             serviceUrl: credentials.serviceUrl as string,
             operationTimeoutSeconds: 30,
+            ...(authentication ? { authentication: authentication } : {}),
+            ...(credentials.tlsAllowInsecureConnection ? { tlsAllowInsecureConnection: credentials.tlsAllowInsecureConnection as boolean } : {}),
         });
 
-        const topic = this.getNodeParameter("topic", 0) as string;  
+        const topic = this.getNodeParameter("topic", 0) as string;
         let producerName = this.getNodeParameter("producerName", 0) as string;
+
 
         if (producerName !== "") {
             producerName = producerName + "-" + Math.random().toString(36).substring(2, 7);
-        }
+                    }
 
         const producerConfig: ProducerConfig = {
             topic,
             producerName,
         };
 
-        const producer = await client.createProducer(producerConfig);
+        console.log('[PulsarPublish] Creating producer with config:', {
+            topic: producerConfig.topic,
+            producerName: producerConfig.producerName
+        });
 
         try {
-            for (let i = 0; i < items.length; i++) {
-                const messageFormat = this.getNodeParameter(
-                    "messageFormat",
-                    i,
-                ) as string;
-                const message = this.getNodeParameter("message", i) as string;
-                const options = this.getNodeParameter("options", i, {}) as {
-                    properties?: {
-                        property: Array<{ key: string; value: string }>;
+            const producer = await client.createProducer(producerConfig);
+
+            try {
+                                for (let i = 0; i < items.length; i++) {
+
+                    const messageFormat = this.getNodeParameter(
+                        "messageFormat",
+                        i,
+                    ) as string;
+                    const message = this.getNodeParameter("message", i) as string;
+                    const options = this.getNodeParameter("options", i, {}) as {
+                        properties?: {
+                            property: Array<{ key: string; value: string }>;
+                        };
+                        partitionKey?: string;
+                        orderingKey?: string;
+                        deliveryTimestamp?: number;
                     };
-                    partitionKey?: string;
-                    orderingKey?: string;
-                    deliveryTimestamp?: number;
-                };
 
-                let messageData: Buffer;
-                if (messageFormat === "json") {
-                    try {
-                        const jsonMessage = JSON.parse(message);
-                        messageData = Buffer.from(JSON.stringify(jsonMessage));
-                    } catch (error) {
-                        throw new NodeOperationError(
-                            this.getNode(),
-                            "Invalid JSON message",
-                        );
-                    }
-                } else {
-                    messageData = Buffer.from(message);
+
+                    let messageData: Buffer;
+                    if (messageFormat === "json") {
+                        try {
+                            const jsonMessage = JSON.parse(message);
+                            messageData = Buffer.from(JSON.stringify(jsonMessage));
+                                                    } catch (error) {
+                            console.error('[PulsarPublish] Invalid JSON message:', error);
+                            throw new NodeOperationError(
+                                this.getNode(),
+                                "Invalid JSON message",
+                            );
+                        }
+                    } else {
+                        messageData = Buffer.from(message);
+                                            }
+
+                    const properties: Record<string, string> = {};
+                    if (options.properties?.property) {
+                        for (const prop of options.properties.property) {
+                            properties[prop.key] = prop.value;
+                        }
+                                            }
+
+                                        await producer.send({
+                        data: messageData,
+                        properties,
+                        partitionKey: options.partitionKey,
+                        orderingKey: options.orderingKey,
+                        deliverAt: options.deliveryTimestamp
+                            ? Date.now() + options.deliveryTimestamp
+                            : undefined,
+                    });
+
+                    returnData.push({ json: { success: true } });
                 }
-
-                const properties: Record<string, string> = {};
-                if (options.properties?.property) {
-                    for (const prop of options.properties.property) {
-                        properties[prop.key] = prop.value;
-                    }
+                            } catch (error) {
+                console.error('[PulsarPublish] Error during message processing:', error);
+                throw error;
+            } finally {
+                                try {
+                    await producer.close();
+                                        await client.close();
+                                    } catch (error) {
+                    console.error('[PulsarPublish] Error during cleanup:', error);
                 }
-
-                await producer.send({
-                    data: messageData,
-                    properties,
-                    partitionKey: options.partitionKey,
-                    orderingKey: options.orderingKey,
-                    deliverAt: options.deliveryTimestamp
-                        ? Date.now() + options.deliveryTimestamp
-                        : undefined,
-                });
-
-                returnData.push({ json: { success: true } });
             }
-        } finally {
-            await producer.close();
+        } catch (error) {
+            console.error('[PulsarPublish] Error creating producer:', error);
             await client.close();
+            throw error;
         }
 
         return [returnData];
