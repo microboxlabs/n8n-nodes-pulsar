@@ -20,7 +20,7 @@ export class PulsarTrigger implements INodeType {
         credentials: [
             {
                 name: 'pulsarApi',
-                required: false
+                required: true
             }
         ],
         properties: [
@@ -169,22 +169,12 @@ export class PulsarTrigger implements INodeType {
         // Authentication support
         let authentication;
 
-        console.log('[PulsarTrigger] Authentication type:', credentials.authentication);
-        console.log('[PulsarTrigger] Service URL:', credentials.serviceUrl);
-        console.log('[PulsarTrigger] TLS Allow Insecure Connection:', credentials.tlsAllowInsecureConnection);
 
         if (credentials.authentication === 'oauth2' &&
             credentials.issuerUrl &&
             credentials.clientId &&
             credentials.clientSecret
         ) {
-            console.log('[PulsarTrigger] Setting up OAuth2/OIDC authentication');
-            console.log('[PulsarTrigger] Issuer URL:', credentials.issuerUrl);
-            console.log('[PulsarTrigger] Client ID:', credentials.clientId);
-            console.log('[PulsarTrigger] Has Client Secret:', !!credentials.clientSecret);
-            console.log('[PulsarTrigger] Has Private Key:', !!credentials.privateKey);
-            console.log('[PulsarTrigger] Audience:', credentials.audience || 'not set');
-            console.log('[PulsarTrigger] Scope:', credentials.scope || 'not set');
 
             // OIDC/OAuth2 Client Credentials Flow
             const params: { type: string; issuer_url: string; client_id?: string | undefined; client_secret?: string | undefined; private_key?: string | undefined; audience?: string | undefined; scope?: string | undefined; } = {
@@ -194,8 +184,7 @@ export class PulsarTrigger implements INodeType {
                 client_secret: credentials.clientSecret as string,
             };
             if (credentials.privateKey) {
-                console.log('[PulsarTrigger] Using private key authentication instead of client secret');
-                params.private_key = credentials.privateKey as string;
+                                params.private_key = credentials.privateKey as string;
                 delete params.client_secret;
             }
             if (credentials.audience) {
@@ -206,45 +195,39 @@ export class PulsarTrigger implements INodeType {
             }
 
             try {
-                console.log('[PulsarTrigger] Creating Pulsar OAuth2 authentication object');
-                authentication = new Pulsar.AuthenticationOauth2(params);
-                console.log('[PulsarTrigger] OAuth2 authentication object created successfully');
-            } catch (error) {
+                                authentication = new Pulsar.AuthenticationOauth2(params);
+                            } catch (error) {
                 console.error('[PulsarTrigger] Error creating OAuth2 authentication:', error);
                 throw error;
             }
         } else if (credentials.authentication === 'token' && credentials.token) {
-            console.log('[PulsarTrigger] Setting up Token authentication');
-            // Token authentication
+                        // Token authentication
             try {
                 authentication = new Pulsar.AuthenticationToken({
                     token: credentials.token as string
                 });
-                console.log('[PulsarTrigger] Token authentication object created successfully');
-            } catch (error) {
+                            } catch (error) {
                 console.error('[PulsarTrigger] Error creating Token authentication:', error);
                 throw error;
             }
         } else if (credentials.authentication === 'jwt' && credentials.jwtToken) {
-            console.log('[PulsarTrigger] Setting up JWT authentication');
-            // JWT authentication
+                        // JWT authentication
             try {
                 authentication = new Pulsar.AuthenticationToken({
                     token: credentials.jwtToken as string
                 });
-                console.log('[PulsarTrigger] JWT authentication object created successfully');
-            } catch (error) {
+                            } catch (error) {
                 console.error('[PulsarTrigger] Error creating JWT authentication:', error);
                 throw error;
             }
         } else {
             console.log('[PulsarTrigger] No authentication configured or missing required fields');
-            if (credentials.authentication === 'oauth2') {
+                        if (credentials.authentication === 'oauth2') {
                 console.log('[PulsarTrigger] OAuth2 selected but missing fields:');
                 console.log('  - issuerUrl:', !!credentials.issuerUrl);
                 console.log('  - clientId:', !!credentials.clientId);
                 console.log('  - clientSecret:', !!credentials.clientSecret);
-            }
+                                                                            }
         }
 
         const client = new Client({
@@ -253,14 +236,11 @@ export class PulsarTrigger implements INodeType {
             ...(credentials.tlsAllowInsecureConnection ? { tlsAllowInsecureConnection: credentials.tlsAllowInsecureConnection as boolean } : {}),
         });
 
-        console.log('[PulsarTrigger] Pulsar client created with authentication:', !!authentication);
-        console.log('[PulsarTrigger] TLS Allow Insecure Connection:', !!credentials.tlsAllowInsecureConnection);
 
         let consumer: Consumer;
         const startConsumer = async () => {
             if (consumer) {
-                console.log('[PulsarTrigger] Consumer already exists, skipping creation');
-                return;
+                                return;
             }
 
             console.log('[PulsarTrigger] Creating consumer with config:', {
@@ -274,18 +254,14 @@ export class PulsarTrigger implements INodeType {
             try {
                 consumer = await client.subscribe({...config,
                     listener: async (msg: any, msgConsumer: any) => {
-                        console.log('[PulsarTrigger] Received message from topic:', msg.getTopicName());
-                        console.log('[PulsarTrigger] Message ID:', msg.getMessageId());
 
                         let data: IDataObject = {};
                         let value = msg.getData().toString();
                         if (this.getNodeParameter('jsonParseMessage') as boolean) {
                             try {
                                 value = JSON.parse(value);
-                                console.log('[PulsarTrigger] Message parsed as JSON successfully');
-                            } catch (error) {
-                                console.log('[PulsarTrigger] Failed to parse message as JSON, using raw string');
-                            }
+                                                            } catch (error) {
+                                                            }
                         }
                         data.message = value;
                         data.headers = msg.getProperties();
@@ -297,17 +273,14 @@ export class PulsarTrigger implements INodeType {
 
                         try {
                             await msgConsumer.acknowledge(msg);
-                            console.log('[PulsarTrigger] Message acknowledged successfully');
-                        } catch (error) {
+                                                    } catch (error) {
                             console.error('[PulsarTrigger] Error acknowledging message:', error);
                         }
 
                         this.emit([this.helpers.returnJsonArray(data)]);
-                        console.log('[PulsarTrigger] Message emitted to n8n workflow');
-                    }
+                                            }
                 });
-                console.log('[PulsarTrigger] Consumer created and subscribed successfully');
-            } catch (error) {
+                            } catch (error) {
                 console.error('[PulsarTrigger] Error creating consumer:', error);
                 throw error;
             }
@@ -318,15 +291,12 @@ export class PulsarTrigger implements INodeType {
         // The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
-            console.log('[PulsarTrigger] Closing consumer and client...');
-            try {
+                        try {
                 if (consumer) {
                     await consumer.close();
-                    console.log('[PulsarTrigger] Consumer closed successfully');
-                }
+                                    }
                 await client.close();
-                console.log('[PulsarTrigger] Client closed successfully');
-            } catch (error) {
+                            } catch (error) {
                 console.error('[PulsarTrigger] Error during cleanup:', error);
             }
 		}
@@ -338,8 +308,7 @@ export class PulsarTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-            console.log('[PulsarTrigger] Manual trigger function called');
-			await startConsumer();
+            			await startConsumer();
 		}
 
         return {
